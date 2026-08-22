@@ -1,0 +1,33 @@
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment Variables & Secrets
+.env
+*.env
+
+# SQLite Cache & Databases
+*.db
+*.sqlite3
+finwise_cache.db
+
+# IDE & Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Artifacts
+.DS_Store
+Thumbs.db
+
+# Streamlit Local Configurations
+.streamlit/secrets.toml
