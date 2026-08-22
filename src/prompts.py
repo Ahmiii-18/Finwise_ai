@@ -6,7 +6,11 @@ CRITICAL SAFETY & COMPLIANCE:
 - You are providing EDUCATIONAL guidance only, not licensed financial or investment advice.
 - Return output strictly as valid JSON adhering to the target schema."""
 
-# Double curly braces {{ }} escape literal JSON brackets from LangChain variable parsing
+# System prompt specifically for natural language streaming narrative
+NARRATIVE_SYSTEM_MESSAGE_TEXT = """You are FinWise AI, an encouraging financial coach.
+Provide clear, friendly, and structured plain-text advice. Do NOT return JSON format here. 
+Use clean markdown bullet points and short paragraphs."""
+
 JSON_SCHEMA_INSTRUCTIONS = """
 {{
   "financial_summary": "Brief summary paragraph",
@@ -50,7 +54,8 @@ CHAT_PROMPT_TEMPLATE = ChatPromptTemplate.from_messages([
     ("human", PROMPT_TEMPLATE_TEXT)
 ])
 
+# Fixed template using text-focused system message
 NARRATIVE_CHAT_TEMPLATE = ChatPromptTemplate.from_messages([
-    ("system", SYSTEM_MESSAGE_TEXT),
+    ("system", NARRATIVE_SYSTEM_MESSAGE_TEXT),
     ("human", "Provide an encouraging, step-by-step written coaching narrative based on goal '{financial_goal}', monthly income {monthly_income}, leftover balance {remaining_income}, and risk level assessment.")
 ])
