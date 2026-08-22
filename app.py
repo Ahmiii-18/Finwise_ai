@@ -1,24 +1,23 @@
-"""
-app.py
-------
-FinWise AI - Modern Personal Financial Advisory & Portfolio Engine.
-"""
-
-import json
-import os
-import time
 import streamlit as st
+import json
+from src.config import EXPENSE_CATEGORIES, FINANCIAL_GOALS, CURRENCIES
+from src.financial_calculator import calculate_financial_metrics
+from src.cache_manager import setup_cache
+from src.chains import run_financial_chain, stream_recommendations
 
 # -----------------------------------------------------------------------
-# CONFIG & STYLES
+# PAGE CONFIGURATION
 # -----------------------------------------------------------------------
 st.set_page_config(
-    page_title="FinWise AI | Personal Wealth & Budget Assistant",
+    page_title="FinWise AI | Personal Wealth & Budget Engine",
     page_icon="💳",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# -----------------------------------------------------------------------
+# MODERN CUSTOM STYLES (CSS)
+# -----------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
     :root {
@@ -26,13 +25,15 @@ CUSTOM_CSS = """
         --fw-bg-soft: #f2f0ea;
         --fw-text: #1e293b;
         --fw-text-muted: #64748b;
-        --fw-border: rgba(30, 41, 59, 0.18);
+        --fw-border: rgba(30, 41, 59, 0.15);
         --fw-accent: #059669;
+        --fw-accent-hover: #047857;
     }
 
     .stApp { background-color: var(--fw-bg); color: var(--fw-text); font-family: 'Inter', sans-serif; }
     .stApp, .stApp p, .stApp span, .stApp li, .stApp label, .stApp div, .stApp h1, .stApp h2, .stApp h3 { color: var(--fw-text); }
 
+    /* Sidebar Customization */
     section[data-testid="stSidebar"] { background: var(--fw-bg-soft); border-right: 1px solid var(--fw-border); }
     section[data-testid="stSidebar"] * { color: var(--fw-text); }
 
@@ -41,7 +42,7 @@ CUSTOM_CSS = """
         font-weight: 600 !important;
     }
 
-    /* Base Styling for Inputs */
+    /* Input Fields & Textareas */
     div[data-baseweb="input"] input,
     div[data-baseweb="textarea"] textarea,
     textarea, input[type="text"], input[type="number"] {
@@ -52,7 +53,7 @@ CUSTOM_CSS = """
         transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
     }
 
-    /* FOCUS STATES FOR ALL INPUT BOXES (INCLUDING NUMERIC & HOP TEXTAREA) */
+    /* Focus States */
     div[data-baseweb="input"]:focus-within,
     div[data-baseweb="textarea"]:focus-within,
     div[data-baseweb="select"]:focus-within,
@@ -64,7 +65,7 @@ CUSTOM_CSS = """
         outline: none !important;
     }
 
-    /* Select Customization */
+    /* Select Dropdowns */
     div[data-baseweb="select"] > div {
         background-color: #ffffff !important;
         border-color: var(--fw-border) !important;
@@ -72,16 +73,17 @@ CUSTOM_CSS = """
     }
     div[data-baseweb="select"] * { color: var(--fw-text) !important; }
 
-    /* Modern Header */
+    /* Header Banner */
     .modern-header {
         background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
         border-radius: 18px;
         padding: clamp(1.2rem, 3vw, 2.2rem);
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.8rem;
         display: flex;
         align-items: center;
         gap: 1.5rem;
         flex-wrap: wrap;
+        box-shadow: 0 4px 20px rgba(6, 78, 59, 0.15);
     }
     .modern-header * { color: #ffffff !important; }
 
@@ -94,23 +96,37 @@ CUSTOM_CSS = """
         display: flex; align-items: center; justify-content: center;
     }
 
+    /* Glass Cards */
     .glass-card {
         background: #ffffff;
         border: 1px solid var(--fw-border);
         border-radius: 14px;
-        padding: 1.2rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+        padding: 1.3rem;
+        margin-bottom: 1.2rem;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     }
 
+    /* Metric Cards Grid */
+    .metric-card-box {
+        background: #ffffff;
+        border: 1px solid var(--fw-border);
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .metric-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fw-text-muted); font-weight: 700; }
+    .metric-value { font-size: 1.5rem; font-weight: 800; color: var(--fw-text); margin-top: 0.2rem; }
+
+    /* Form Buttons */
     .stButton > button, div[data-testid="stFormSubmitButton"] > button {
         background: #059669 !important;
         color: #ffffff !important;
         font-weight: 600 !important;
         border: none !important;
         border-radius: 8px !important;
-        padding: 0.6rem 1.3rem !important;
+        padding: 0.65rem 1.4rem !important;
         width: 100% !important;
+        transition: background 0.2s ease !important;
     }
     .stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
         background: #047857 !important;
@@ -137,10 +153,15 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### ⚙️ Engine Parameters")
-    risk_profile = st.selectbox("Risk Tolerance", ["Conservative", "Moderate", "Growth", "Aggressive"], index=1)
-    currency = st.selectbox("Currency", ["USD ($)", "EUR (€)", "GBP (£)", "PKR (Rs)"], index=0)
+    cache_type = st.radio("Caching Mechanism", ["InMemoryCache", "SQLiteCache"], index=0)
+    setup_cache(cache_type)
+    
+    if st.button("🔄 Reset Session State"):
+        st.session_state.clear()
+        st.rerun()
+
     st.divider()
-    st.markdown('<div style="font-size: 0.78rem; color: #64748b;">Financial advice generated by FinWise AI is for educational reference only.</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size: 0.78rem; color: #64748b;">⚠️ <b>EDUCATIONAL DISCLAIMER:</b> Prototype for informational use only. Not certified financial advice.</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------
 # HEADER BANNER
@@ -158,87 +179,137 @@ st.markdown(f"""
 # -----------------------------------------------------------------------
 # INTAKE FORM
 # -----------------------------------------------------------------------
-with st.form("financial_intake_form"):
-    st.markdown("#### 💰 Income & Essential Cash Flow")
-    c1, c2, c3 = st.columns(3)
-    with c1:
+with st.form("financial_form"):
+    st.markdown("#### 💰 Income & Primary Reserves")
+    col1, col2, col3 = st.columns(3)
+    with col1:
         monthly_income = st.number_input("Monthly Income", min_value=0.0, value=5000.0, step=100.0)
-    with c2:
-        fixed_expenses = st.number_input("Fixed Expenses (Rent, Utilities)", min_value=0.0, value=2000.0, step=50.0)
-    with c3:
-        variable_expenses = st.number_input("Variable Expenses (Food, Leisure)", min_value=0.0, value=1200.0, step=50.0)
+    with col2:
+        current_savings = st.number_input("Current Savings", min_value=0.0, value=15000.0, step=500.0)
+    with col3:
+        currency = st.selectbox("Currency Unit", CURRENCIES)
 
-    st.markdown("#### 🏦 Assets & Liabilities")
-    col_a1, col_a2 = st.columns(2)
-    with col_a1:
-        total_savings = st.number_input("Total Savings & Investments", min_value=0.0, value=15000.0, step=500.0)
-    with col_a2:
-        total_debt = st.number_input("Total High-Interest Debt", min_value=0.0, value=3000.0, step=250.0)
+    st.markdown("#### 📊 Itemized Monthly Expenses")
+    exp_cols = st.columns(3)
+    expenses = {}
+    for idx, category in enumerate(EXPENSE_CATEGORIES):
+        with exp_cols[idx % 3]:
+            expenses[category] = st.number_input(
+                f"{category.replace('_', ' ').title()}", 
+                min_value=0.0, 
+                value=200.0 if category != "housing" else 1500.0, 
+                step=50.0
+            )
 
-    st.markdown("#### 🎯 Financial Goals & Priorities")
-    goals = st.text_area(
-        "Narrative Goals & Notes",
-        placeholder="e.g. Save $10,000 for emergency fund, pay off credit cards within 12 months, start investing in index funds.",
-        height=100
-    )
-
+    st.markdown("#### 🎯 Strategic Priority Focus")
+    financial_goal = st.selectbox("Financial Focus Area", FINANCIAL_GOALS)
+    
     submitted = st.form_submit_button("🚀 Run Wealth & Advisory Synthesis")
 
 # -----------------------------------------------------------------------
-# COMPUTATION & RESULTS DASHBOARD
+# COMPUTATION & DASHBOARD DISPLAY
 # -----------------------------------------------------------------------
 if submitted:
-    net_savings = monthly_income - (fixed_expenses + variable_expenses)
-    savings_rate = (net_savings / monthly_income * 100) if monthly_income > 0 else 0.0
+    # 1. Deterministic Python Calculations
+    metrics = calculate_financial_metrics(monthly_income, expenses, current_savings)
+    curr_sym = currency.split()[1]
 
     st.divider()
     
-    # Financial Metrics Cards
-    st.markdown(f"""
-        <div class="glass-card" style="border-left: 6px solid #059669;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <span style="font-size: 0.85rem; color: #64748b; text-transform: uppercase;">Net Monthly Surplus</span>
-                    <h2 style="margin: 0; color: #059669; font-size: 1.8rem;">{currency.split()[1]} {net_savings:,.2f} / mo</h2>
-                </div>
-                <div>
-                    <span style="font-size: 0.85rem; color: #64748b; text-transform: uppercase;">Savings Rate</span>
-                    <h2 style="margin: 0; color: #1e293b; font-size: 1.8rem;">{savings_rate:.1f}%</h2>
-                </div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    # 2. Financial Metrics Cards Grid
+    st.markdown("### 📈 Deterministic Cash-Flow Analytics")
+    m1, m2, m3, m4, m5 = st.columns(5)
+    
+    with m1:
+        st.markdown(f'''<div class="metric-card-box"><div class="metric-title">Total Expenses</div><div class="metric-value">{curr_sym} {metrics["total_expenses"]:,.2f}</div></div>''', unsafe_allow_html=True)
+    with m2:
+        st.markdown(f'''<div class="metric-card-box"><div class="metric-title">Remaining Cash</div><div class="metric-value">{curr_sym} {metrics["remaining_income"]:,.2f}</div></div>''', unsafe_allow_html=True)
+    with m3:
+        st.markdown(f'''<div class="metric-card-box"><div class="metric-title">Savings Ratio</div><div class="metric-value">{metrics["savings_ratio"]:.1f}%</div></div>''', unsafe_allow_html=True)
+    with m4:
+        st.markdown(f'''<div class="metric-card-box"><div class="metric-title">Expense Ratio</div><div class="metric-value">{metrics["expense_ratio"]:.1f}%</div></div>''', unsafe_allow_html=True)
+    with m5:
+        st.markdown(f'''<div class="metric-card-box"><div class="metric-title">Rule Score</div><div class="metric-value">{metrics["preliminary_score"]}/100</div></div>''', unsafe_allow_html=True)
 
-    tab_summary, tab_strategy, tab_insights = st.tabs([
-        "📊 Cash Flow Overview",
-        "💡 Strategic Plan",
-        "🎯 Optimization Recommendations"
-    ])
+    # 3. Execute LangChain Chain
+    chain_inputs = {
+        "monthly_income": monthly_income,
+        "total_expenses": metrics["total_expenses"],
+        "remaining_income": metrics["remaining_income"],
+        "savings": current_savings,
+        "savings_ratio": metrics["savings_ratio"],
+        "expense_ratio": metrics["expense_ratio"],
+        "financial_goal": financial_goal,
+        "expense_breakdown": json.dumps(expenses)
+    }
 
-    with tab_summary:
+    with st.spinner("AI Synthesis in progress..."):
+        ai_result = run_financial_chain(chain_inputs)
+
+    st.divider()
+    st.markdown("### 🤖 LangChain AI Wealth Insights")
+
+    # Health & Risk Indicators Card
+    c_score, c_risk = st.columns(2)
+    score = ai_result.get("financial_health_score", 50)
+    risk_lvl = ai_result.get("risk_level", "UNKNOWN").upper()
+
+    with c_score:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown("#### Cash Flow Breakdown")
-        st.write(f"• **Monthly Income:** {currency.split()[1]} {monthly_income:,.2f}")
-        st.write(f"• **Total Expenses:** {currency.split()[1]} {(fixed_expenses + variable_expenses):,.2f}")
-        st.write(f"• **Net Savings:** {currency.split()[1]} {net_savings:,.2f}")
-        st.write(f"• **Total Assets:** {currency.split()[1]} {total_savings:,.2f}")
-        st.write(f"• **High-Interest Debt:** {currency.split()[1]} {total_debt:,.2f}")
+        st.markdown(f"**AI Health Score:** `{score}/100`")
+        st.progress(score / 100)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab_strategy:
+    with c_risk:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown("#### Recommended Action Plan")
-        if total_debt > 0:
-            st.markdown("1. **Debt Avalanche Strategy:** Direct discretionary cash flow to clear high-interest liabilities first.")
+        st.markdown("**Risk Level Assessment:**")
+        if risk_lvl == "LOW":
+            st.success(f"🟢 {risk_lvl} RISK")
+        elif risk_lvl in ["MEDIUM", "MODERATE"]:
+            st.warning(f"🟡 {risk_lvl} RISK")
         else:
-            st.markdown("1. **Debt Free Status:** Maintain zero high-interest liabilities.")
-        st.markdown(f"2. **Emergency Fund Target:** Maintain at least 3-6 months of fixed costs ({currency.split()[1]} {fixed_expenses * 3:,.2f} - {currency.split()[1]} {fixed_expenses * 6:,.2f}).")
-        st.markdown(f"3. **Investment Allocation:** Deploy remaining surplus according to your **{risk_profile}** profile.")
+            st.error(f"🔴 {risk_lvl} RISK")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab_insights:
+    # Tabs Section
+    t_summary, t_analysis, t_plan = st.tabs(["📋 Executive Summary", "🔍 Category Analysis", "🎯 Strategic Action Plan"])
+
+    with t_summary:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown("#### Narrative Analysis")
-        st.write(f"Targeting stated objectives: *'{goals if goals.strip() else 'General Wealth Building'}'*")
-        st.info("FinWise AI engine completed the cash flow assessment.")
+        st.markdown("#### Financial Assessment")
+        st.write(ai_result.get("financial_summary", ""))
+        st.markdown("#### High-Priority Focus Areas")
+        for priority in ai_result.get("top_priorities", []):
+            st.write(f"• {priority}")
         st.markdown('</div>', unsafe_allow_html=True)
+
+    with t_analysis:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("#### Categorical Spend Evaluation")
+        for item in ai_result.get("spending_analysis", []):
+            with st.expander(f"📁 {item.get('category', 'Category').replace('_', ' ').title()}"):
+                st.write(f"**Observation:** {item.get('observation', '')}")
+                st.write(f"**Recommendation:** {item.get('recommendation', '')}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with t_plan:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        col_plan_a, col_plan_b = st.columns(2)
+        with col_plan_a:
+            st.markdown("#### Budget & Savings Recommendations")
+            for rec in ai_result.get("budget_recommendations", []):
+                st.write(f"• {rec}")
+            for strat in ai_result.get("savings_strategy", []):
+                st.write(f"• {strat}")
+        with col_plan_b:
+            st.markdown("#### Next Month Action Items")
+            for idx, act in enumerate(ai_result.get("next_month_action_plan", []), 1):
+                st.write(f"**{idx}.** {act}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Streamed Live Narrative Response
+    st.divider()
+    st.markdown("### 🎙️ Real-Time Financial Advisory Narrative")
+    st.markdown('<div class="glass-card" style="border-left: 5px solid #059669;">', unsafe_allow_html=True)
+    st.write_stream(stream_recommendations(chain_inputs))
+    st.markdown('</div>', unsafe_allow_html=True)

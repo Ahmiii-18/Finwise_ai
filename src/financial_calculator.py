@@ -1,63 +1,43 @@
-"""
-src/financial_calculator.py
----------------------------
-Deterministic Python financial calculations and preliminary rule-based scoring (No AI).
-"""
-
-def calculate_financials(monthly_income: float, expenses: dict, current_savings: float) -> dict:
-    """Computes total expenses, remaining income, savings ratio, and expense ratio."""
+def calculate_financial_metrics(monthly_income: float, expenses: dict, current_savings: float) -> dict:
     total_expenses = sum(expenses.values())
     remaining_income = monthly_income - total_expenses
-
-    if monthly_income <= 0:
-        savings_ratio = 0.0
-        expense_ratio = 0.0
-    else:
+    
+    # Guard against divide-by-zero
+    if monthly_income > 0:
         savings_ratio = (current_savings / monthly_income) * 100
         expense_ratio = (total_expenses / monthly_income) * 100
+    else:
+        savings_ratio = 0.0
+        expense_ratio = 0.0
+
+    # Preliminary Weighted 0-100 Heuristic Score
+    # 1. Savings Ratio Weight (30%)
+    savings_score = min(100.0, (savings_ratio / 20.0) * 100) * 0.30
+    
+    # 2. Expense Ratio Weight (40%) - lower expense ratio gives higher score
+    if expense_ratio <= 50:
+        expense_score = 100.0
+    elif expense_ratio >= 100:
+        expense_score = 0.0
+    else:
+        expense_score = (100 - expense_ratio) * 2.0
+    expense_score *= 0.40
+
+    # 3. Leftover Cash Flow Weight (20%)
+    leftover_score = (100.0 if remaining_income > 0 else 0.0) * 0.20
+
+    # 4. Debt Burden Weight (10%)
+    debt_exp = expenses.get("loan_debt", 0.0)
+    debt_ratio = (debt_exp / monthly_income * 100) if monthly_income > 0 else 0.0
+    debt_score = max(0.0, (100.0 - debt_ratio * 2)) * 0.10
+
+    preliminary_score = int(round(savings_score + expense_score + leftover_score + debt_score))
+    preliminary_score = max(0, min(100, preliminary_score))
 
     return {
-        "monthly_income": round(monthly_income, 2),
-        "total_expenses": round(total_expenses, 2),
-        "remaining_income": round(remaining_income, 2),
-        "savings_ratio": round(savings_ratio, 2),
-        "expense_ratio": round(expense_ratio, 2),
-        "current_savings": round(current_savings, 2),
+        "total_expenses": total_expenses,
+        "remaining_income": remaining_income,
+        "savings_ratio": savings_ratio,
+        "expense_ratio": expense_ratio,
+        "preliminary_score": preliminary_score
     }
-
-def calculate_preliminary_score(financials: dict, debt_expense: float) -> int:
-    """Calculates a rule-based preliminary score (0-100) based on weighted heuristics."""
-    income = financials["monthly_income"]
-    if income <= 0:
-        return 0
-
-    score = 100.0
-
-    # 1. Expense ratio penalty
-    expense_ratio = financials["expense_ratio"]
-    if expense_ratio > 100:
-        score -= 40
-    elif expense_ratio > 80:
-        score -= 25
-    elif expense_ratio > 60:
-        score -= 10
-
-    # 2. Savings ratio reward / penalty
-    savings_ratio = financials["savings_ratio"]
-    if savings_ratio >= 20:
-        score += 10
-    elif savings_ratio < 5:
-        score -= 15
-
-    # 3. Leftover income penalty
-    if financials["remaining_income"] < 0:
-        score -= 20
-
-    # 4. Debt burden penalty
-    debt_ratio = (debt_expense / income) * 100
-    if debt_ratio > 40:
-        score -= 20
-    elif debt_ratio > 20:
-        score -= 10
-
-    return max(0, min(100, int(score)))

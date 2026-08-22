@@ -1,62 +1,56 @@
-"""
-src/prompts.py
---------------
-PromptTemplate and ChatPromptTemplate definitions with strict JSON schema instructions.
-"""
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 
-JSON_STRUCTURED_PROMPT_TEMPLATE = """
-You are FinWise AI, an expert educational financial consultant.
-Analyse the user's monthly financial metrics step-by-step and generate a structured JSON response.
+SYSTEM_MESSAGE_TEXT = """You are FinWise AI, an expert educational financial advisory assistant. 
+Your goal is to evaluate user cash flows, assess risk levels, and output structured JSON recommendations.
+CRITICAL SAFETY & COMPLIANCE:
+- You are providing EDUCATIONAL guidance only, not licensed financial or investment advice.
+- Return output strictly as valid JSON adhering to the target schema."""
 
-Financial Profile & Deterministic Metrics:
-- Monthly Income: {currency} {monthly_income}
-- Total Expenses: {currency} {total_expenses}
-- Remaining Income: {currency} {remaining_income}
-- Current Monthly Savings: {currency} {savings}
-- Savings Ratio: {savings_ratio}%
-- Expense Ratio: {expense_ratio}%
-- Primary Financial Goal: {financial_goal}
-- Itemized Expense Breakdown: {expense_breakdown}
-
-CRITICAL INSTRUCTIONS:
-1. Return ONLY valid JSON adhering strictly to the schema below.
-2. Do NOT wrap output in standard markdown ticks unless strictly valid JSON.
-3. Keep all analysis strictly educational and safe.
-
-JSON Schema:
+# Double curly braces {{ }} escape literal JSON brackets from LangChain variable parsing
+JSON_SCHEMA_INSTRUCTIONS = """
 {{
-  "financial_summary": "Comprehensive summary of user's financial posture",
+  "financial_summary": "Brief summary paragraph",
   "financial_health_score": 75,
-  "risk_level": "LOW | MEDIUM | HIGH",
   "spending_analysis": [
-    {{
-      "category": "Category Name",
-      "observation": "Observation regarding spending",
-      "recommendation": "Actionable suggestion"
-    }}
+    {{"category": "category_name", "observation": "obs text", "recommendation": "rec text"}}
   ],
-  "top_priorities": ["Priority 1", "Priority 2"],
-  "budget_recommendations": ["Recommendation 1", "Recommendation 2"],
-  "savings_strategy": ["Strategy 1", "Strategy 2"],
-  "next_month_action_plan": ["Action Step 1", "Action Step 2"]
+  "risk_level": "LOW | MEDIUM | HIGH",
+  "top_priorities": ["priority 1", "priority 2"],
+  "budget_recommendations": ["rec 1", "rec 2"],
+  "savings_strategy": ["strategy 1"],
+  "next_month_action_plan": ["step 1", "step 2"]
 }}
 """
 
+PROMPT_TEMPLATE_TEXT = """
+Financial Data Analysis Request:
+- Monthly Income: {monthly_income}
+- Total Expenses: {total_expenses}
+- Remaining Income: {remaining_income}
+- Current Savings: {savings}
+- Savings Ratio: {savings_ratio}%
+- Expense Ratio: {expense_ratio}%
+- Financial Goal: {financial_goal}
+- Itemized Expenses: {expense_breakdown}
+
+Analyze these details and supply JSON strictly following this schema:
+""" + JSON_SCHEMA_INSTRUCTIONS
+
 FINANCIAL_PROMPT_TEMPLATE = PromptTemplate(
+    template=PROMPT_TEMPLATE_TEXT,
     input_variables=[
-        "currency", "monthly_income", "total_expenses", "remaining_income",
-        "savings", "savings_ratio", "expense_ratio", "financial_goal", "expense_breakdown"
-    ],
-    template=JSON_STRUCTURED_PROMPT_TEMPLATE,
+        "monthly_income", "total_expenses", "remaining_income",
+        "savings", "savings_ratio", "expense_ratio",
+        "financial_goal", "expense_breakdown"
+    ]
 )
 
-FINANCIAL_CHAT_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", "You are FinWise AI, an educational personal finance assistant. Never guarantee financial outcomes or provide direct investment advice."),
-    ("human", JSON_STRUCTURED_PROMPT_TEMPLATE)
+CHAT_PROMPT_TEMPLATE = ChatPromptTemplate.from_messages([
+    ("system", SYSTEM_MESSAGE_TEXT),
+    ("human", PROMPT_TEMPLATE_TEXT)
 ])
 
 NARRATIVE_CHAT_TEMPLATE = ChatPromptTemplate.from_messages([
-    ("system", "You are FinWise AI, an encouraging financial coach delivering step-by-step educational advice to the user."),
-    ("human", "Based on the following financial summary, provide an encouraging, easy-to-read narrative breakdown and recommendations:\n\nSummary: {financial_summary}\nGoal: {financial_goal}\nRisk Level: {risk_level}")
+    ("system", SYSTEM_MESSAGE_TEXT),
+    ("human", "Provide an encouraging, step-by-step written coaching narrative based on goal '{financial_goal}', monthly income {monthly_income}, leftover balance {remaining_income}, and risk level assessment.")
 ])
