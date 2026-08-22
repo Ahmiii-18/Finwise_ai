@@ -2,16 +2,6 @@
 app.py
 ------
 FinWise AI - Modern Personal Financial Advisory & Portfolio Engine.
-
-Features:
-- Real inline-SVG brand logo (header + sidebar)
-- High-contrast responsive adaptive theme
-- Focus ring highlighting on all input boxes & text areas
-- Financial Health Intake & Cash Flow Analytics
-- Multi-Metric Advisory (Budgeting, Debt, Savings, Investment Rationale)
-- Target-Based Financial Refinement Protocol
-- Real-Time Token Streaming Advice Engine
-- Fully responsive layout across mobile, tablet, and desktop
 """
 
 import json
@@ -62,7 +52,7 @@ CUSTOM_CSS = """
         transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
     }
 
-    /* FOCUS STATES FOR ALL INPUT BOXES */
+    /* FOCUS STATES FOR ALL INPUT BOXES (INCLUDING NUMERIC & HOP TEXTAREA) */
     div[data-baseweb="input"]:focus-within,
     div[data-baseweb="textarea"]:focus-within,
     div[data-baseweb="select"]:focus-within,
@@ -129,25 +119,20 @@ CUSTOM_CSS = """
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-def logo_svg(size=40):
-    return f"""
-    <svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M2 17L12 22L22 17" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M2 12L12 17L22 12" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    """
+def get_logo_svg(size=40):
+    return f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 17L12 22L22 17" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12L12 17L22 12" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'''
 
 # -----------------------------------------------------------------------
 # SIDEBAR
 # -----------------------------------------------------------------------
 with st.sidebar:
-    st.markdown(f"""
-        <div style="display:flex; align-items:center; gap:0.7rem; margin-bottom:0.2rem;">
-            {logo_svg(36)}
-            <div style="font-size:1.3rem; font-weight:800; color:#059669;">FinWise AI</div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="display:flex; align-items:center; gap:0.7rem; margin-bottom:0.2rem;">'
+        f'{get_logo_svg(36)}'
+        f'<div style="font-size:1.3rem; font-weight:800; color:#059669;">FinWise AI</div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
     st.caption("Financial Advisory Engine v2.0")
 
     st.divider()
@@ -162,7 +147,7 @@ with st.sidebar:
 # -----------------------------------------------------------------------
 st.markdown(f"""
     <div class="modern-header">
-        <div class="header-logo">{logo_svg(48)}</div>
+        <div class="header-logo">{get_logo_svg(48)}</div>
         <div>
             <h1 style="margin:0; font-size:2rem; font-weight:800;">FinWise AI Budget & Wealth Engine</h1>
             <p style="margin:0.3rem 0 0 0; opacity:0.9;">Algorithmic cash-flow tracking, debt reduction strategies, and financial planning.</p>
