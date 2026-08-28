@@ -2,6 +2,8 @@
 
 # Streamlit Demo : [finwiseai-ai.streamlit.app](https://finwiseai-ai.streamlit.app/)
 
+# Video Link : [Click Here](https://drive.google.com/file/d/1Hp35EWs3KmgN8OrD6-su4s75LHdhjRKl/view?usp=sharing)
+
 **FinWise AI** is an AI-powered personal financial assistant prototype built with **LangChain (LCEL)** and **Streamlit**. It combines deterministic Python-based financial calculations with OpenAI's LLM capabilities to deliver personalized, structured financial insights and streaming budgeting advice.
 
 ---
@@ -34,4 +36,6 @@ To ensure maximum accuracy and reliability, the architecture clearly separates r
 
 git clone [https://github.com/your-username/finwise_ai.git](https://github.com/your-username/finwise_ai.git)
 cd finwise_ai
+Some new line of text
+
 Some new line of text
